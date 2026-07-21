@@ -1,0 +1,18 @@
+Host: Welcome to the founder show. My guest today built a bootstrapped SaaS to eight
+figures. Let's talk about how you prioritize.
+
+Guest: The core method I use is what I call the ICE score. For every possible project,
+you rate three things one to ten: Impact, how much it moves the metric that matters;
+Confidence, how sure you are it'll work; and Ease, how little effort it takes. You
+multiply them, sort descending, and you work the top of the list. It stops teams from
+chasing shiny low-impact ideas.
+
+Host: How often do you re-score?
+
+Guest: Weekly. Scores decay as you learn. We also read The Lean Startup by Eric Ries
+early on, and Obviously Awesome by April Dunford reshaped our positioning.
+
+Host: Any hiring rule?
+
+Guest: Hire slow on the first ten. We do a paid trial project before any full-time
+offer. It's the single highest-leverage filter we found.
