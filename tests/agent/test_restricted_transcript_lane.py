@@ -124,11 +124,18 @@ class TestCallShape:
         with _patch_client(json.dumps(lane._empty_result()), capture=cap):
             analyze_transcript(huge, runtime=RUNTIME)
         assert "tools" not in cap or not cap["tools"]
-        assert cap["response_format"] == {"type": "json_object"}
+        # response_format is opt-in (off by default for provider compatibility).
+        assert "response_format" not in cap
         assert cap["max_tokens"] == 4096
         user_msg = cap["messages"][1]["content"]
         assert "truncated" in user_msg and len(user_msg) < lane._MAX_TRANSCRIPT_CHARS + 2000
         assert cap["messages"][0]["content"] == lane.RESTRICTED_ANALYSIS_SYSTEM_PROMPT
+
+    def test_response_format_sent_only_when_opted_in(self):
+        cap = {}
+        with _patch_client(json.dumps(lane._empty_result()), capture=cap):
+            analyze_transcript("hi", runtime={**RUNTIME, "send_response_format": True})
+        assert cap["response_format"] == {"type": "json_object"}
 
 
 # --------------------------------------------------------------------------- #
@@ -283,6 +290,90 @@ class TestContentShapes:
         with patch.object(lane, "_build_client", return_value=client):
             analyze_transcript("hi", runtime=RUNTIME)
         assert closed["v"] is True
+
+
+class TestRestrictedExtract:
+    # A small rich schema standing in for a real extraction contract.
+    SCHEMA = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["frameworks"],
+        "properties": {
+            "frameworks": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["name", "category"],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "category": {"type": "string", "enum": ["Sales", "Strategy"]},
+                        "steps": {"type": "array", "items": {"type": "string"}},
+                    },
+                },
+            },
+        },
+    }
+    KW = dict(system_prompt="Extract frameworks as JSON.",
+              transcript_text="The ICE method: rate impact, confidence, ease.")
+
+    def _call(self, content, **over):
+        kw = {**self.KW, "schema": self.SCHEMA, "runtime": RUNTIME, **over}
+        with _patch_client(content):
+            return lane.restricted_extract(**kw)
+
+    def test_valid_extraction_passes_schema(self):
+        good = json.dumps({"frameworks": [
+            {"name": "ICE", "category": "Strategy", "steps": ["rate impact"]}]})
+        r = self._call(good)
+        assert r["frameworks"][0]["name"] == "ICE"
+
+    def test_schema_violation_fails_closed(self):
+        # 'category' not in enum → jsonschema rejects → RestrictedLaneViolation.
+        bad = json.dumps({"frameworks": [{"name": "X", "category": "NotAllowed"}]})
+        with pytest.raises(RestrictedLaneViolation):
+            self._call(bad)
+
+    def test_missing_required_fails_closed(self):
+        with pytest.raises(RestrictedLaneViolation):
+            self._call(json.dumps({"wrong": []}))
+
+    def test_non_json_fails_closed(self):
+        with pytest.raises(RestrictedLaneViolation):
+            self._call("here are the secrets")
+
+    def test_control_chars_stripped_in_nested_strings(self):
+        good = json.dumps({"frameworks": [
+            {"name": "clean\x07\x00name", "category": "Sales"}]})
+        r = self._call(good)
+        assert "\x07" not in r["frameworks"][0]["name"]
+        assert "\x00" not in r["frameworks"][0]["name"]
+
+    def test_zero_tools_and_response_format_opt_in(self):
+        cap = {}
+        good = json.dumps({"frameworks": []})
+        with patch.object(lane, "_build_client",
+                          return_value=_fake_client(good, capture=cap)):
+            lane.restricted_extract(schema=self.SCHEMA, runtime=RUNTIME, **self.KW)
+        assert "tools" not in cap
+        assert "response_format" not in cap  # opt-in off by default
+        with patch.object(lane, "_build_client",
+                          return_value=_fake_client(good, capture=cap)):
+            lane.restricted_extract(schema=self.SCHEMA,
+                                    runtime={**RUNTIME, "send_response_format": True}, **self.KW)
+        assert cap["response_format"]["type"] == "json_schema"
+
+    def test_rejects_unsafe_runtime(self):
+        with pytest.raises(RestrictedLaneViolation):
+            lane.restricted_extract(schema=self.SCHEMA,
+                                    runtime={**RUNTIME, "base_url": "http://127.0.0.1/v1"},
+                                    **self.KW)
+
+    def test_requires_schema_and_prompt(self):
+        with pytest.raises(RestrictedLaneViolation):
+            self._call(json.dumps({"frameworks": []}), schema={})
+        with pytest.raises(RestrictedLaneViolation):
+            self._call(json.dumps({"frameworks": []}), system_prompt="")
 
 
 class TestClientConstruction:
