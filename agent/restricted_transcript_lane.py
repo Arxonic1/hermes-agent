@@ -540,6 +540,7 @@ def restricted_extract(
     max_output_tokens: int = 8192,
     max_string_len: int = 4000,
     timeout: float = 120.0,
+    response_format: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Tool-free structured extraction over an UNTRUSTED transcript against a
     caller-supplied JSON Schema. Same zero-tool / SSRF / fail-closed / taint guarantees as
@@ -574,9 +575,16 @@ def restricted_extract(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": _wrap_untrusted(transcript_text, metadata, instr)},
     ]
-    rf = _response_format_for(
-        runtime, {"type": "json_schema", "json_schema": {"name": "extraction",
-                                                         "strict": True, "schema": schema}})
+    # Explicit response_format wins (e.g. {"type":"json_object"} — needed because strict
+    # json_schema requires EVERY property in `required`, which rejects optional-field
+    # schemas). Else fall back to the opt-in strict json_schema. Local jsonschema
+    # validation below is authoritative either way.
+    if response_format is not None:
+        rf = response_format
+    else:
+        rf = _response_format_for(
+            runtime, {"type": "json_schema", "json_schema": {"name": "extraction",
+                                                             "strict": True, "schema": schema}})
     raw = _run_call(rt, messages, max_tokens=max_output_tokens, response_format=rf, timeout=t)
 
     if not isinstance(raw, str) or not raw.strip():

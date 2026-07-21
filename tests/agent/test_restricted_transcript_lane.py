@@ -363,6 +363,18 @@ class TestRestrictedExtract:
                                     runtime={**RUNTIME, "send_response_format": True}, **self.KW)
         assert cap["response_format"]["type"] == "json_schema"
 
+    def test_explicit_response_format_overrides_opt_in(self):
+        # An explicit response_format (e.g. json_object) is used verbatim — needed because
+        # strict json_schema requires every property in `required` and rejects optional
+        # fields. Even with send_response_format on, the explicit value wins.
+        cap = {}
+        good = json.dumps({"frameworks": []})
+        with patch.object(lane, "_build_client", return_value=_fake_client(good, capture=cap)):
+            lane.restricted_extract(schema=self.SCHEMA,
+                                    runtime={**RUNTIME, "send_response_format": True},
+                                    response_format={"type": "json_object"}, **self.KW)
+        assert cap["response_format"] == {"type": "json_object"}
+
     def test_rejects_unsafe_runtime(self):
         with pytest.raises(RestrictedLaneViolation):
             lane.restricted_extract(schema=self.SCHEMA,
