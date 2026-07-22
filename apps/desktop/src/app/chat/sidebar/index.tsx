@@ -111,7 +111,7 @@ import type { SidebarNavItem } from '../../types'
 import { countLabel } from './chrome'
 import { SidebarCronJobsSection } from './cron-jobs-section'
 import { SidebarLoadMoreRow } from './load-more-row'
-import { orderByIds, reconcileOrderIds, resolveManualSessionOrderIds, sameIds } from './order'
+import { findActiveItem, orderByIds, reconcileOrderIds, resolveManualSessionOrderIds, sameIds } from './order'
 import { ProfileRail } from './profile-switcher'
 import { ProjectDialog } from './project-dialog'
 import {
@@ -524,6 +524,23 @@ export function ChatSidebar({
     () => (agentOrderManual ? orderByIds(unpinnedAgentSessions, s => s.id, agentOrderIds) : unpinnedAgentSessions),
     [unpinnedAgentSessions, agentOrderIds, agentOrderManual]
   )
+
+  // Keep the focused chat outside the long, virtualized history scroller. This
+  // works whether the session is recent, pinned, or shown inside a project,
+  // without mutating any persisted order.
+  const currentSession = useMemo(
+    () =>
+      findActiveItem(
+        visibleSessions,
+        session => [session.id, session._lineage_root_id],
+        activeSidebarSessionId
+      ),
+    [visibleSessions, activeSidebarSessionId]
+  )
+
+  const currentSessionPinned = currentSession
+    ? pinnedSessionIds.includes(sessionPinId(currentSession))
+    : false
 
   // Recents are local-only: messaging-platform sessions are fetched as their
   // own slice ($messagingSessions) and rendered in self-managed per-platform
@@ -1202,6 +1219,28 @@ export function ChatSidebar({
               value={searchQuery}
             />
           </div>
+        )}
+
+        {!trimmedQuery && currentSession && (
+          <SidebarSessionsSection
+            activeSessionId={currentSession.id}
+            collapsible={false}
+            contentClassName="flex flex-col gap-px rounded-lg pb-1"
+            emptyState={null}
+            label={s.current}
+            onArchiveSession={onArchiveSession}
+            onBranchSession={onBranchSession}
+            onDeleteSession={onDeleteSession}
+            onResumeSession={onResumeSession}
+            onToggle={() => undefined}
+            onTogglePin={currentSessionPinned ? unpinSession : pinSession}
+            open
+            pinned={currentSessionPinned}
+            rootClassName="shrink-0 px-2 pb-1"
+            sessions={[currentSession]}
+            showProfileTags={showAllProfiles}
+            workingSessionIdSet={workingSessionIdSet}
+          />
         )}
 
         {showSessionSections && (

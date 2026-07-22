@@ -1,6 +1,38 @@
 import { describe, expect, it } from 'vitest'
 
-import { orderByIds, reconcileOrderIds, resolveManualSessionOrderIds, sameIds } from './order'
+import { findActiveItem, orderByIds, reconcileOrderIds, resolveManualSessionOrderIds, sameIds } from './order'
+
+describe('findActiveItem', () => {
+  const items = [
+    { id: 'newest', lineageRoot: null },
+    { id: 'current-tip', lineageRoot: 'current-root' },
+    { id: 'oldest', lineageRoot: null }
+  ]
+
+  const ids = (item: (typeof items)[number]) => [item.id, item.lineageRoot]
+
+  it('selects the active item independently of its position in a long list', () => {
+    expect(findActiveItem(items, ids, 'current-tip')).toBe(items[1])
+  })
+
+  it('selects a compressed continuation by its focused lineage-root id', () => {
+    expect(findActiveItem(items, ids, 'current-root')).toBe(items[1])
+  })
+
+  it('returns undefined when there is no active match', () => {
+    expect(findActiveItem(items, ids, 'missing')).toBeUndefined()
+    expect(findActiveItem(items, ids, null)).toBeUndefined()
+  })
+
+  it('returns the first match in iteration order when several items share the active id', () => {
+    const tie = [
+      { id: 'root', lineageRoot: null },
+      { id: 'tip', lineageRoot: 'root' }
+    ]
+
+    expect(findActiveItem(tie, item => [item.id, item.lineageRoot], 'root')).toBe(tie[0])
+  })
+})
 
 describe('resolveManualSessionOrderIds', () => {
   it('clears legacy auto-seeded order until the user manually reorders sessions', () => {
