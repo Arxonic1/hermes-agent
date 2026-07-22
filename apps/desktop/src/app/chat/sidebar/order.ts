@@ -22,6 +22,19 @@ export function resolveManualSessionOrderIds(currentIds: string[], orderIds: str
   return reconcileFreshFirst(currentIds, orderIds)
 }
 
+/** Resolve the focused item without changing the persisted user order. */
+export function findActiveItem<T>(
+  items: T[],
+  getIds: (item: T) => readonly (null | string | undefined)[],
+  activeId: null | string
+): T | undefined {
+  if (!activeId) {
+    return undefined
+  }
+
+  return items.find(item => getIds(item).includes(activeId))
+}
+
 /** Reorder `items` by `orderIds`; items missing from the order surface first. */
 export function orderByIds<T>(items: T[], getId: (item: T) => string, orderIds: string[]): T[] {
   if (!orderIds.length) {
