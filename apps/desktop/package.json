@@ -56,8 +56,9 @@
     "test:e2e:update-snapshots": "WLR_BACKENDS=headless WLR_NO_HARDWARE_CURSORS=1 cage -- npx playwright test e2e/ --reporter=list --update-snapshots"
   },
   "dependencies": {
-    "@assistant-ui/react": "^0.14.23",
-    "@assistant-ui/react-streamdown": "^0.3.4",
+    "@assistant-ui/core": "0.2.19",
+    "@assistant-ui/react": "0.14.24",
+    "@assistant-ui/react-streamdown": "0.3.5",
     "@audiowave/react": "^0.6.2",
     "@chenglou/pretext": "^0.0.6",
     "@codemirror/commands": "^6.10.4",
@@ -141,7 +142,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
-    "electron": "40.10.2",
+    "electron": "41.10.3",
     "electron-builder": "^26.8.1",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.4",
@@ -160,7 +161,7 @@
     "wait-on": "^9.0.5"
   },
   "build": {
-    "electronVersion": "40.10.2",
+    "electronVersion": "41.10.3",
     "appId": "com.nousresearch.hermes",
     "productName": "Hermes",
     "executableName": "Hermes",
