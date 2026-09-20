@@ -529,18 +529,11 @@ export function ChatSidebar({
   // works whether the session is recent, pinned, or shown inside a project,
   // without mutating any persisted order.
   const currentSession = useMemo(
-    () =>
-      findActiveItem(
-        visibleSessions,
-        session => [session.id, session._lineage_root_id],
-        activeSidebarSessionId
-      ),
+    () => findActiveItem(visibleSessions, session => [session.id, session._lineage_root_id], activeSidebarSessionId),
     [visibleSessions, activeSidebarSessionId]
   )
 
-  const currentSessionPinned = currentSession
-    ? pinnedSessionIds.includes(sessionPinId(currentSession))
-    : false
+  const currentSessionPinned = currentSession ? pinnedSessionIds.includes(sessionPinId(currentSession)) : false
 
   // Recents are local-only: messaging-platform sessions are fetched as their
   // own slice ($messagingSessions) and rendered in self-managed per-platform
